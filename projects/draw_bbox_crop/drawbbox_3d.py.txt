@@ -1,0 +1,41 @@
+import cv2 as cv
+import numpy as np
+import open3d as o3d
+
+# Load the point cloud (example using Open3D)
+pcd = o3d.io.read_point_cloud("point_cloud.ply")
+points = np.asarray(pcd.points)
+
+# Load the image and draw bounding box (for simplicity, let's assume you already have the bounding box coordinates)
+image = cv.imread("image.png")
+bbox = (x1, y1, x2, y2)  # Bounding box coordinates in 2D
+
+# Assume you have a projection matrix that maps 3D points to 2D
+projection_matrix = np.array([
+    [fx, 0, cx, 0],
+    [0, fy, cy, 0],
+    [0, 0, 1, 0]
+])
+
+def project_points_3d_to_2d(points_3d, projection_matrix):
+    # Convert 3D points to homogeneous coordinates
+    points_3d_homogeneous = np.hstack((points_3d, np.ones((points_3d.shape[0], 1))))
+    # Project points to 2D
+    points_2d_homogeneous = points_3d_homogeneous @ projection_matrix.T
+    points_2d = points_2d_homogeneous[:, :2] / points_2d_homogeneous[:, 2:3]
+    return points_2d
+
+# Project the 3D points to 2D
+points_2d = project_points_3d_to_2d(points, projection_matrix)
+
+# Extract the points that fall within the bounding box
+in_bbox = (points_2d[:, 0] >= x1) & (points_2d[:, 0] <= x2) & (points_2d[:, 1] >= y1) & (points_2d[:, 1] <= y2)
+cropped_points = points[in_bbox]
+
+# Save or visualize the cropped point cloud
+cropped_pcd = o3d.geometry.PointCloud()
+cropped_pcd.points = o3d.utility.Vector3dVector(cropped_points)
+o3d.io.write_point_cloud("cropped_point_cloud.ply", cropped_pcd)
+
+# Optionally visualize the cropped point cloud
+o3d.visualization.draw_geometries([cropped_pcd])
